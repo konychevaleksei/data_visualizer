@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+	<body>
+		<script src="https://unpkg.com/konva@7.0.6/konva.min.js"></script>
+		<meta charset="utf-8" />	
+
+		<script>
+			function forTotal(num) {
+				return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+			}			
+			
+			function to_r(i) {
+				if (i < 10) 
+					return "0" + i.toString();
+				else
+					return i.toString();
+			}
+			
+			function endof(n) {
+				if (n % 10 > 1 && n % 10 < 5) return "а";
+				if (n % 10 == 1 && n != 11) return "";
+				if (n % 10 > 4 || n % 10 == 0 || n < 20) return "ов";
+				else return "а";
+			}				
+			
+			function process_title(num) {
+				return decodeURIComponent((num + '').replace(/\+/g, '%20'));
+			}		
+	
+			function process_num_t(num) {	
+				num = num.replaceAll(/ /gi, '');
+				num = num.replace(/,/g, '.')
+				return Math.round(parseFloat(num) * 100) / 100;
+			}		
+						
+			function process_num(num) {
+				if (typeof num != 'string') {
+					if (num > 9)
+						return Math.round(parseFloat(num) * 10) / 10;
+					else
+						return Math.round(parseFloat(num) * 100) / 100;
+				}
+					
+				
+				num = num.replaceAll(/ /gi, '');
+				num = num.replace(/,/g, '.')
+				if (num > 9)
+					return Math.round(parseFloat(num) * 10) / 10;
+				else
+					return Math.round(parseFloat(num) * 100) / 100;
+			}				
+
+			var used = new Set();
+			function randomIntegerUtil(min, max) {
+				while (1) {
+					var c = randomInteger(min, max);
+					if (!used.has(c)) {
+						used.add(c);
+						return c;
+					}
+				}
+			}			
+			
+			function randomInteger(min, max) {
+				let rand = min + Math.random() * (max + 1 - min);
+				return Math.floor(rand);
+			}			
+			
+			function logMapElements(value, key, map) {
+				console.log(`m[${key}] = ${value}`);
+			}	
+			
+			function get_quarter(num) {
+				var qt;
+				if (num[3] == '1') 
+					qt = 4;
+				else 
+					qt = Math.ceil((parseInt(num[4]) / 3));
+				return (num[8] + num[9] + qt.toString() + num[4] + num[0]).toString();
+			}			
+			
+			function visualize(contents, column, shifting) {
+				var in_total = ar_max = project_len = 0;
+				var year_sum = [], data_storage = [], color_type = [], text_color = [];
+				var title, sDown = 0;
+				
+				color_type["ЭСКРОУ"] = "green";
+				color_type["ДДУ"] = "orange";
+				
+				text_color["ЭСКРОУ"] = "white";
+				text_color["ДДУ"] = "black";				
+				
+				for (var i = 1; i < 100; i++) 
+					year_sum[i] = 0;
+				
+				contents.replaceAll(/"/gi, '');
+				contents.replaceAll(/;;/gi, '');
+				tarr = contents.split('\n');
+				for (var i = 0; i < tarr.length - 1; i++) {
+					if (i == 0) {
+						title = process_title(tarr[i].split(';')[column + 2]).toUpperCase();
+						continue;
+					}
+					project_home = tarr[i].split(';');
+					
+					if (process_num(project_home[2]) < 0 && column != 1)
+						sDown = 50 * (column - 1);
+										
+					in_total += process_num_t(project_home[2]);
+					ar_max = Math.max(ar_max, process_num(project_home[2]));
+					year_sum[parseInt(project_home[column + 2].substr(8, 2))] += process_num(project_home[2]);
+					data_storage[get_quarter(project_home[column + 2]) + to_r(i).toString()] = [process_title(project_home[0]), project_home[1], process_num(project_home[2])];		
+					project_len++;			
+				}		
+				
+
+				if (column == 1) 
+					data_storage.forEach(logMapElements);		
+				
+
+				var w = window.screen.width;
+				var x = w / (6 * (project_len + 1) + 1);
+				
+				document.write('<svg style="position: absolute; top: ' + ((shifting - 1) * 600 + 30 + sDown) + 'px; left: ' + x + '; width: 100%; height: 100%;"><text font-size="1.2em" y="20px" font-family="Arial, Helvetica, sans-serif"><tspan fill="black">' + title + '</tspan><tspan fill="#AA0000"> (всего ' + project_len + ' проект' + endof(project_len) + '; ' + $_GET['ind'] + ': ' + forTotal(Math.round(in_total * 100) / 100) + ' ' + $_GET['ind'] + ')</tspan></text><text font-size="0.8em" x="30px" y="55px" font-family="Arial, Helvetica, sans-serif">Проекты реализуемые по ЭСКРОУ</text><text font-size="0.8em" x="30px" y="75px" font-family="Arial, Helvetica, sans-serif">Проекты реализуемые по ДДУ</text><rect y="45px" width="23px" height="10px" style="fill:rgb(0,155,0);" /><rect y="65px" width="23px" height="10px" style="fill:rgb(255,155,0);" /></svg><div style="position: absolute; left: 0; top: 0;"  id="container' + column + '"></div>');	
+				
+				var container_title = "container" + column.toString();
+				var stage = new Konva.Stage({
+					container: container_title,
+					y: (shifting - 1) * 600 + sDown,
+					width: 1920,
+					height: 3500,			
+				});
+
+				var layer = new Konva.Layer();		
+
+				var margin = dope = 0;
+				if (project_len > 15) margin = 5;
+				if (project_len > 20) {
+					margin = 7;
+					dope = 20;
+				}
+				if (project_len > 23) margin = 10;
+				
+				var isNeg = iu = 0, i = 1;
+				data_storage.forEach ((value, keys) => {	
+					var iu = 0;		
+					var height = 100 * value[2] / ar_max;
+					
+					if (parseInt(value[2]) < 0) {
+						iu = height + 80;
+						isNeg = 50;
+					}								
+					
+					var rect = new Konva.Rect({
+						x: x * i + 5 * x * (i - 1),
+						y: 340 - height + iu,
+						fill: color_type[value[1]],
+						width: x * 5,
+						height: 80 + height,
+						cornerRadius: 0,
+					});
+
+					var complexText = new Konva.Text({
+						x: x * i + 5 * x * (i - 1),
+						y: 340 - height + iu,
+						text: forTotal(value[2]),
+						fontSize: 9,
+						fontFamily: "arial",
+						fill: text_color[value[1]],
+						width: 5 * x,
+						height: 80 + height,
+						padding: 10, 
+						align: "center",
+					});
+					  
+					var titleText = new Konva.Text({
+						x: x * i + 5 * x * (i - 1) - margin,
+						y: 420 + iu,
+						text: value[0],
+						fontSize: 9,
+						lineHeight: 1.3,
+						fontFamily: "arial",
+						fill: "black",
+						width: 100 - dope,
+						height: 300,
+						padding: 8,
+						align: "center",
+					});
+						
+					
+					layer.add(rect);
+					layer.add(titleText);
+					layer.add(complexText);
+					stage.add(layer);
+					i++;
+				})			
+
+				var l = r = i = 1;
+				var p = -1;
+				var keys = [];
+				var sum = 0;
+				data_storage.forEach ((value, key) => {	
+					keys[i++] = key;
+					if (p == -1 || key.toString().substr(0, 3) == p.toString().substr(0, 3)) {
+						r++;
+						sum += value[2];
+						p = key;	
+						return;
+					}
+
+					var quarterText = new Konva.Text({
+						x: x + 6 * x * (l - 1),
+						y: 500 + isNeg,
+						text: "Q" + keys[i - 2].toString().substr(2, 1) + "Y" + keys[i - 2].toString().substr(0, 2),
+						fontSize: 12,
+						fontFamily: "arial",
+						fill: "black",
+						width: x * (r - l - 1) + 5 * x * (r - l),
+						height: 35,
+						padding: 0,
+						align: "center",
+					});		
+							  
+					var titleText = new Konva.Text({
+						x: x + 6 * x * (l - 1),
+						y: 520 + isNeg,
+						text: forTotal(process_num(sum)),
+						fontSize: 10,
+						fontFamily: "arial",
+						fill: "white",
+						width: x * (r - l - 1) + 5 * x * (r - l),
+						height: 35,
+						padding: 12,
+						align: "center",
+					});		  
+
+					var rect = new Konva.Rect({
+						x: x + 6 * x * (l - 1),
+						y: 520 + isNeg,
+						fill: "#66c",
+						width: titleText.width(),
+						height: titleText.height(),
+						cornerRadius: 0,
+					});
+						
+					
+					var lineq = new Konva.Rect({
+						  x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 1,
+						  y: 230,
+						  fill: "#000",
+						  width: 1,
+						  height: 190,
+						  cornerRadius: 0,
+					});				
+					
+					  
+					layer.add(rect);
+					layer.add(lineq);
+					layer.add(quarterText);		  
+					layer.add(titleText);
+					  
+					stage.add(layer);
+
+					sum = value[2];		
+					p = key;		
+					l = r;		
+					r++;
+				})				
+	
+
+				var quarterText = new Konva.Text({
+					x: x + 6 * x * (l - 1),
+					y: 500 + isNeg,
+					text: "Q" + keys[i - 1].toString().substr(2, 1) + "Y" + keys[i - 1].toString().substr(0, 2),
+					fontSize: 12,
+					fontFamily: "arial",
+					fill: "black",
+					width: x * (r - l - 1) + 5 * x * (r - l),
+					height: 35,
+					padding: 0,
+					align: "center",
+				});		
+							  
+				var titleText = new Konva.Text({
+					x: x + 6 * x * (l - 1),
+					y: 520 + isNeg,
+					text: forTotal(process_num(sum)),
+					fontSize: 10,
+					fontFamily: "arial",
+					fill: "white",
+					width: x * (r - l - 1) + 5 * x * (r - l),
+					height: 35,
+					padding: 12,
+					align: "center",
+				});		  
+
+			    var rect = new Konva.Rect({
+					  x: x + 6 * x * (l - 1),
+					  y: 520 + isNeg,
+					  fill: "#66c",
+					  width: titleText.width(),
+					  height: titleText.height(),
+					  cornerRadius: 0,
+			    });
+					
+			    var lineq = new Konva.Rect({
+					  x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 1,
+					  y: 210 + isNeg,
+					  fill: "#000",
+					  width: 1,
+					  height: 210,
+					  cornerRadius: 0,
+				});			
+						
+					
+					  
+				layer.add(rect);
+				layer.add(lineq);
+				layer.add(quarterText);		  
+				layer.add(titleText);
+					  
+				stage.add(layer);	
+	
+	
+		
+				var l = r = i = 1;
+				var p = '-1';
+				var keys = [];	
+				data_storage.forEach ((value, key) => {		
+					keys[i++] = key;
+					if (p == '-1' || key.toString().substr(0, 2) == p.toString().substr(0, 2)) {
+						r++;
+						p = key;	
+						return;
+					}
+					
+					var titleText = new Konva.Text({
+						x: x + 6 * x * (l - 1),
+						y: 565 + isNeg,
+						text: "20" + keys[i - 2].toString().substr(0, 2),
+						fontSize: 10,
+						fontFamily: "arial",
+						fill: "white",
+						width: x * (r - l - 1) + 5 * x * (r - l),
+						height: 35,
+						padding: 12,
+						align: "center",
+					});		  
+
+					var rect = new Konva.Rect({
+						x: x + 6 * x * (l - 1),
+						y: 565 + isNeg,
+						fill: "#999",
+						width: titleText.width(),
+						height: titleText.height(),
+						cornerRadius: 0,
+					});
+						
+					var lineq = new Konva.Rect({
+						x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 1,
+						y: 210,
+						fill: "#000",
+						width: 1,
+						height: 210,
+						cornerRadius: 0,
+					});						
+						
+					var ellipse = new Konva.Ellipse({
+						x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 1,
+						y: 180,
+						radius : {
+						  x : 50,
+						  y : 30
+						},
+						fill: "orange"
+					});
+						
+					var yearText = new Konva.Text({
+						x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 50,
+						y: 145,
+						text: "За 20" + keys[i - 2].toString().substr(0, 2) + " год",
+						fontSize: 9,
+						fontFamily: "arial",
+						fill: "black",
+						width: ellipse.width(),
+						height: 35,
+						padding: 12,
+						align: "center",
+					});	
+					  
+					var yearNumText = new Konva.Text({
+						x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 50,
+						y: 162,
+						text: forTotal(process_num(year_sum[keys[i - 2].toString().substr(0, 2)])),
+						fontSize: 12,
+						fontStyle: "bold",
+						fontFamily: "arial",
+						fill: "black",
+						width: ellipse.width(),
+						height: 35,
+						padding: 12,
+						align: "center",
+					});			  				
+					
+					layer.add(rect);
+					layer.add(lineq);
+					layer.add(ellipse);
+					layer.add(yearText);		  
+					layer.add(yearNumText);	  
+					layer.add(titleText);
+					  
+					stage.add(layer);
+				
+					p = key;		
+					l = r;		
+					r++;
+				})
+				
+				var titleText = new Konva.Text({
+					x: x + 6 * x * (l - 1),
+					y: 565 + isNeg,
+					text: "20" + keys[i - 1].toString().substr(0, 2),
+					fontSize: 10,
+					fontFamily: "arial",
+					fill: "white",
+					width: x * (r - l - 1) + 5 * x * (r - l),
+					height: 35,
+					padding: 12,
+					align: "center",
+				});		  
+
+				var rect = new Konva.Rect({
+					x: x + 6 * x * (l - 1),
+					y: 565 + isNeg,
+					fill: "#999",
+					width: titleText.width(),
+					height: titleText.height(),
+					cornerRadius: 0,
+				});
+					
+				
+				var lineq = new Konva.Rect({
+					x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 1,
+					y: 210,
+					fill: "#000",
+					width: 1,
+					height: 210,
+					cornerRadius: 0,
+				});						
+
+				var yearText = new Konva.Text({
+					x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 50,
+					y: 145,
+					text: "За 20" + keys[i - 2].toString().substr(0, 2) + " год",
+					fontSize: 9,
+					fontFamily: "arial",
+					fill: "black",
+					width: 100,
+					height: 60,
+					padding: 12,
+					align: "center",
+				});	
+					
+				var ellipse = new Konva.Ellipse({
+					x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 1,
+					y: 180,
+					radius : {
+					  x : yearText.width() / 2,
+					  y : yearText.height() / 2
+					},
+					fill: "orange"
+				});
+					
+
+				  
+				var yearNumText = new Konva.Text({
+					x: x + 6 * x * (l - 1) + x * (r - l - 1) + 5 * x * (r - l) + x / 2 - 50,
+					y: 162,
+					text: forTotal(process_num(year_sum[keys[i - 1].toString().substr(0, 2)])),
+					fontSize: 12,
+					fontStyle: "bold",
+					fontFamily: "arial",
+					fill: "black",
+					width: ellipse.width(),
+					height: 35,
+					padding: 12,
+					align: "center",
+				});			  				
+				
+				layer.add(rect);
+				layer.add(lineq);
+				layer.add(ellipse);
+				layer.add(yearText);		  
+				layer.add(yearNumText);		  
+				layer.add(titleText);
+				  
+				stage.add(layer);												
+								
+			}
+			
+			
+			var $_GET = {};
+			if(document.location.toString().indexOf('?') !== -1) {
+				var query = document.location
+							   .toString()
+							   .replace(/^.*?\?/, '')
+							   .replace(/#.*$/, '')
+							   .split('&');
+
+				for(var i = 0, l = query.length; i < l; i++) {
+				   var aux = decodeURIComponent(query[i]).split('=');
+				   $_GET[aux[0]] = aux[1];
+				}
+			}
+			
+			var contents = $_GET['content'];
+			nc = contents.split('\n');
+			ncc = nc[0].split(';');
+			
+			var i = 1;
+			for (var k = 3; k < ncc.length; ++k)
+				if ($_GET['g' + (k - 2)] == 'on')
+					visualize(contents, k - 2, i++);
+
+		</script>
+
+	<div id="overhome" onmouseover="document.getElementById('home').style.visibility = 'visible';" onmouseout="document.getElementById('home').style.visibility = 'hidden';" style="position: fixed; top: 0; right: 0; width: 20%; height: 20%; ">
+		<div id="home">
+			<button style="position: fixed; top: 1%; right: 1%;" onclick="f()">Домой</button>
+		</div>
+	</div>	
+	<script>
+		document.getElementById('home').style.visibility = 'hidden';
+		function f() {
+			window.location.href = 'start.html';
+		}	
+	</script>
+
+	</body>
+</html>
